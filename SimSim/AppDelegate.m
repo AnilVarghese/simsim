@@ -393,6 +393,12 @@
     [NSString stringWithFormat:@"%@/Library/Developer/CoreSimulator/Devices/%@/", [self homeDirectoryPath], uuid];
 }
 
+- (NSString *) xcodeRootPath
+{
+    return
+    [NSString stringWithFormat:@"%@/Library/Developer/Xcode", [self homeDirectoryPath]];
+}
+
 //----------------------------------------------------------------------------
 - (NSMutableArray*) simulatorPaths
 {
@@ -476,6 +482,9 @@
 //----------------------------------------------------------------------------
 - (void) addServiceItemsToMenu:(NSMenu*)menu
 {
+    NSMenuItem* clean = [[NSMenuItem alloc] initWithTitle:@"Clean Derived Data" action:@selector(cleanDerivedData) keyEquivalent:@"C"];
+    [menu addItem:clean];
+
     NSMenuItem* startAtLogin =
     [[NSMenuItem alloc] initWithTitle:@"Start at Login" action:@selector(handleStartAtLogin:) keyEquivalent:@""];
     
@@ -745,6 +754,10 @@
     [self resetFolder:@"tmp" inRoot:path];
 }
 
+-(void) cleanDerivedData
+{
+    [self resetFolder:@"DerivedData" inRoot:[self xcodeRootPath]];
+}
 //----------------------------------------------------------------------------
 - (void) openInFinder:(id)sender
 {
