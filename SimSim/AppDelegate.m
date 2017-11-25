@@ -38,7 +38,7 @@
 - (NSImage*) scaleImage:(NSImage*)anImage toSize:(NSSize)size
 {
     NSImage* sourceImage = anImage;
-
+    
     if ([sourceImage isValid])
     {
         NSImage* smallImage = [[NSImage alloc] initWithSize:size];
@@ -47,10 +47,10 @@
         [[NSGraphicsContext currentContext] setImageInterpolation:NSImageInterpolationHigh];
         [sourceImage drawAtPoint:NSZeroPoint fromRect:CGRectMake(0, 0, size.width, size.height) operation:NSCompositeCopy fraction:1.0];
         [smallImage unlockFocus];
-
+        
         return smallImage;
     }
-
+    
     return nil;
 }
 
@@ -58,7 +58,7 @@
 - (void) applicationDidFinishLaunching:(NSNotification*)aNotification
 {
     self.statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength];
-
+    
     _statusItem.image = [NSImage imageNamed:@"BarIcon"];
     _statusItem.image.template = YES;
     _statusItem.highlightMode = YES;
@@ -75,7 +75,7 @@
     {
         NSString* windowOwner = [window objectForKey:(NSString *)kCGWindowOwnerName];
         NSString* windowName = [window objectForKey:(NSString *)kCGWindowName];
-
+        
         if ([windowOwner containsString:@"Simulator"] &&
             ([windowName containsString:@"iOS"] || [windowName containsString:@"watchOS"] || [windowName containsString:@"tvOS"]))
         {
@@ -96,7 +96,7 @@
 #define CMDONE_ICON_PATH @"/Applications/Commander One.app"
 
 //----------------------------------------------------------------------------
-- (void) addSubMenusToItem:(NSMenuItem*)item usingPath:(NSString*)path
+- (void) addSubMenusToItem:(NSMenuItem*)item usingBundlePath:(NSString*)path contentPath:(NSString *)contentPath
 {
     NSImage* icon = nil;
     NSMenu* subMenu = [NSMenu new];
@@ -112,9 +112,9 @@
     [finder setImage:icon];
     
     [subMenu addItem:finder];
-
+    
     hotkey = [NSNumber numberWithInt:[hotkey intValue] + 1];
-
+    
     NSMenuItem* terminal =
     [[NSMenuItem alloc] initWithTitle:@"Terminal" action:@selector(openInTerminal:) keyEquivalent:[hotkey stringValue]];
     [terminal setRepresentedObject:path];
@@ -128,22 +128,22 @@
     hotkey = [NSNumber numberWithInt:[hotkey intValue] + 1];
     
     if ([Realm isRealmAvailableForPath:path]) {
-
+        
         if (self.realmModule == nil) {
             self.realmModule = [Realm new];
         }
-
+        
         icon = [[NSWorkspace sharedWorkspace] iconForFile:[Realm applicationPath]];
         [icon setSize: NSMakeSize(ACTION_ICON_SIZE, ACTION_ICON_SIZE)];
-
+        
         [self.realmModule generateRealmMenuForPath:path forMenu:subMenu withHotKey:hotkey icon:icon];
-
+        
         hotkey = [NSNumber numberWithInt:[hotkey intValue] + 1];
     }
     
     CFStringRef iTermBundleID = CFStringCreateWithCString(CFAllocatorGetDefault(), "com.googlecode.iterm2", kCFStringEncodingUTF8);
     CFArrayRef iTermAppURLs = LSCopyApplicationURLsForBundleIdentifier(iTermBundleID, NULL);
-
+    
     if (iTermAppURLs)
     {
         NSMenuItem* iTerm =
@@ -156,12 +156,12 @@
         
         [subMenu addItem:iTerm];
         hotkey = [NSNumber numberWithInt:[hotkey intValue] + 1];
-
+        
         CFRelease(iTermAppURLs);
     }
-
+    
     CFRelease(iTermBundleID);
-
+    
     if ([CommanderOne isCommanderOneAvailable])
     {
         NSMenuItem* commanderOne =
@@ -175,7 +175,7 @@
         [subMenu addItem:commanderOne];
         hotkey = [NSNumber numberWithInt:[hotkey intValue] + 1];
     }
-
+    
     [subMenu addItem:[NSMenuItem separatorItem]];
     
     NSMenuItem* pasteboard =
@@ -184,7 +184,7 @@
     [subMenu addItem:pasteboard];
     
     hotkey = [NSNumber numberWithInt:[hotkey intValue] + 1];
-
+    
     if ([self simulatorRunning])
     {
         NSMenuItem* screenshot =
@@ -195,9 +195,19 @@
         hotkey = [NSNumber numberWithInt:[hotkey intValue] + 1];
     }
     
+    NSMenuItem* viewApplicationContent =
+    [[NSMenuItem alloc] initWithTitle:@"View application data" action:@selector(openInFinder:) keyEquivalent:[hotkey stringValue]];
+    [viewApplicationContent setRepresentedObject:contentPath];
+    [subMenu addItem:viewApplicationContent];
+    
+    hotkey = [NSNumber numberWithInt:[hotkey intValue] + 1];
+    
+    [item setSubmenu:subMenu];
+    
+    
     NSMenuItem* resetApplication =
     [[NSMenuItem alloc] initWithTitle:@"Reset application data" action:@selector(resetApplication:) keyEquivalent:[hotkey stringValue]];
-    [resetApplication setRepresentedObject:path];
+    [resetApplication setRepresentedObject:contentPath];
     [subMenu addItem:resetApplication];
     
     hotkey = [NSNumber numberWithInt:[hotkey intValue] + 1];
@@ -216,10 +226,10 @@
         NSString* appBundleUUID = bundles[j][KEY_FILE];
         
         NSString* applicationRootBundlePath =
-            [simulatorRootPath stringByAppendingFormat:@"data/Containers/Bundle/Application/%@/", appBundleUUID];
+        [simulatorRootPath stringByAppendingFormat:@"data/Containers/Bundle/Application/%@/", appBundleUUID];
         
         NSString* applicationBundlePropertiesPath =
-            [applicationRootBundlePath stringByAppendingString:@".com.apple.mobile_container_manager.metadata.plist"];
+        [applicationRootBundlePath stringByAppendingString:@".com.apple.mobile_container_manager.metadata.plist"];
         
         NSDictionary* applicationBundleProperties =
         [NSDictionary dictionaryWithContentsOfFile:applicationBundlePropertiesPath];
@@ -239,42 +249,43 @@
                          usingRootPath:(NSString*)simulatorRootPath
 {
     __block NSMutableDictionary* metadata = nil;
-
+    
     NSString* installedApplicationsBundlePath =
-        [simulatorRootPath stringByAppendingString:@"data/Containers/Bundle/Application/"];
+    [simulatorRootPath stringByAppendingString:@"data/Containers/Bundle/Application/"];
     
     NSArray* installedApplicationsBundle =
-        [FileManager getSortedFilesFromFolder:installedApplicationsBundlePath];
+    [FileManager getSortedFilesFromFolder:installedApplicationsBundlePath];
     
     [self processBundles:installedApplicationsBundle
            usingRootPath:simulatorRootPath
      andBundleIdentifier:applicationBundleIdentifier
-         withFinalBlock:^(NSString* applicationRootBundlePath)
-    {
-        NSString* applicationFolderName = [FileManager getApplicationFolderFromPath:applicationRootBundlePath];
-        
-        NSString* applicationFolderPath = [applicationRootBundlePath stringByAppendingFormat:@"%@/", applicationFolderName];
-        
-        NSString* applicationPlistPath = [applicationFolderPath stringByAppendingString:@"Info.plist"];
-        
-        NSDictionary* applicationPlist = [NSDictionary dictionaryWithContentsOfFile:applicationPlistPath];
-        
-        NSString* applicationVersion = applicationPlist[@"CFBundleVersion"];
-        NSString* applicationBundleName = applicationPlist[@"CFBundleName"];
-        
-        if (applicationBundleName.length == 0)
-        {
-            applicationBundleName = applicationPlist[@"CFBundleDisplayName"];
-        }
-        
-        NSImage* icon = [self getIconForApplicationWithPlist:applicationPlist folder:applicationFolderPath];
-        
-        metadata = [NSMutableDictionary new];
-        
-        metadata[@"applicationBundleName"] = applicationBundleName;
-        metadata[@"applicationVersion"] = applicationVersion;
-        metadata[@"applicationIcon"] = icon;
-    }];
+          withFinalBlock:^(NSString* applicationRootBundlePath)
+     {
+         NSString* applicationFolderName = [FileManager getApplicationFolderFromPath:applicationRootBundlePath];
+         
+         NSString* applicationFolderPath = [applicationRootBundlePath stringByAppendingFormat:@"%@/", applicationFolderName];
+         
+         NSString* applicationPlistPath = [applicationFolderPath stringByAppendingString:@"Info.plist"];
+         
+         NSDictionary* applicationPlist = [NSDictionary dictionaryWithContentsOfFile:applicationPlistPath];
+         
+         NSString* applicationVersion = applicationPlist[@"CFBundleVersion"];
+         NSString* applicationBundleName = applicationPlist[@"CFBundleName"];
+         
+         if (applicationBundleName.length == 0)
+         {
+             applicationBundleName = applicationPlist[@"CFBundleDisplayName"];
+         }
+         
+         NSImage* icon = [self getIconForApplicationWithPlist:applicationPlist folder:applicationFolderPath];
+         
+         metadata = [NSMutableDictionary new];
+         
+         metadata[@"applicationBundleName"] = applicationBundleName;
+         metadata[@"applicationVersion"] = applicationVersion;
+         metadata[@"applicationIcon"] = icon;
+         metadata[@"applicationBundlePath"] = applicationRootBundlePath;
+     }];
     
     return metadata;
 }
@@ -289,27 +300,28 @@
     NSString* applicationBundleIdentifier = application[@"MCMMetadataIdentifier"];
     
     NSDictionary* metadata =
-        [self getMetadataForBundle:applicationBundleIdentifier
-                     usingRootPath:simulatorRootPath];
+    [self getMetadataForBundle:applicationBundleIdentifier
+                 usingRootPath:simulatorRootPath];
     
     if (metadata)
     {
         NSString* title =
         [NSString stringWithFormat:@"%@ (%@)", metadata[@"applicationBundleName"], metadata[@"applicationVersion"]];
         
+        NSString *bundleId = metadata[@"applicationBundlePath"];
+        
         // This path will be opened on click
+        NSString* applicationBundlePath = bundleId;
         NSString* applicationContentPath = [self applicationRootPathByUUID:uuid andRootPath:simulatorRootPath];
         
         NSMenuItem* item =
         [[NSMenuItem alloc] initWithTitle:title action:@selector(openInWithModifier:)
                             keyEquivalent:[NSString stringWithFormat:@"Alt-%lu", (unsigned long)i]];
-
-        [item setRepresentedObject:applicationContentPath];
+        
+        [item setRepresentedObject:applicationBundlePath];
         [item setImage:metadata[@"applicationIcon"]];
         
-        [self addSubMenusToItem:item usingPath:applicationContentPath];
-        
-        
+        [self addSubMenusToItem:item usingBundlePath:applicationBundlePath contentPath:applicationContentPath];
         [menu addItem:item];
     }
 }
@@ -321,6 +333,7 @@
     return
     [simulatorRootPath stringByAppendingFormat:@"data/Containers/Data/Application/%@/", uuid];
 }
+
 
 //----------------------------------------------------------------------------
 - (NSDictionary*) getApplicationPropertiesByUUID:(NSString*)uuid
@@ -352,7 +365,7 @@
     for (NSUInteger i = 0; i < [installedApplicationsData count]; i++)
     {
         NSString* uuid = installedApplicationsData[i][KEY_FILE];
-
+        
         NSDictionary* applicationDataProperties =
         [self getApplicationPropertiesByUUID:uuid andRootPath:simulatorRootPath];
         
@@ -387,13 +400,13 @@
     [NSString stringWithFormat:@"%@/Library/Preferences/com.apple.iphonesimulator.plist", [self homeDirectoryPath]];
     
     NSDictionary* simulatorProperties = [NSDictionary dictionaryWithContentsOfFile:simulatorPropertiesPath];
-
+    
     NSString* uuid = simulatorProperties[@"CurrentDeviceUDID"];
     
     NSDictionary* devicePreferences = simulatorProperties[@"DevicePreferences"];
     
     NSMutableArray* simulatorPaths = [NSMutableArray new];
-
+    
     [simulatorPaths addObject:[self simulatorRootPathByUUID:uuid]];
     
     if (devicePreferences != nil)
@@ -421,7 +434,7 @@
         NSString* simulatorDetailsPath = [path stringByAppendingString:@"device.plist"];
         
         NSDictionary* properties = [NSDictionary dictionaryWithContentsOfFile:simulatorDetailsPath];
-
+        
         if (properties == nil) { continue; } // skip "empty" properties
         
         Simulator* simulator = [Simulator simulatorWithDictionary:properties path:path];
@@ -454,7 +467,7 @@
                 [userApplications addObject:app];
             }
         }
-
+        
     }
     
     return userApplications;
@@ -492,23 +505,23 @@
 - (void) presentApplicationMenu
 {
     NSMenu* menu = [NSMenu new];
-
+    
     NSMutableArray* simulators = [self activeSimulators];
     
     NSArray* recentSimulators = [simulators sortedArrayUsingComparator:^NSComparisonResult(id a, id b)
-    {
-        NSDate* l = [(Simulator*)a date];
-        NSDate* r = [(Simulator*)b date];
-        return [r compare:l];
-    }];
+                                 {
+                                     NSDate* l = [(Simulator*)a date];
+                                     NSDate* r = [(Simulator*)b date];
+                                     return [r compare:l];
+                                 }];
     
     int simulatorsCount = 0;
     for (Simulator* simulator in recentSimulators)
     {
         NSString* simulatorRootPath = simulator.path;
-
+        
         NSArray* installedApplications = [self installedAppsOnSimulator:simulatorRootPath];
-
+        
         if ([installedApplications count])
         {
             NSString* simulator_title = [NSString stringWithFormat:@"%@ (%@)",
@@ -527,9 +540,9 @@
     }
     
     [menu addItem:[NSMenuItem separatorItem]];
-
+    
     [self addServiceItemsToMenu:menu];
-
+    
     [_statusItem popUpStatusItemMenu:menu];
 }
 
@@ -571,15 +584,15 @@
     else
     {
         NSDictionary* applicationIcons = applicationPlist[@"CFBundleIcons"];
-
+        
         NSString* postfix = @"";
-
+        
         if (!applicationIcons)
         {
             applicationIcons = applicationPlist[@"CFBundleIcons~ipad"];
             postfix = @"~ipad";
         }
-
+        
         NSDictionary* applicationPrimaryIcons = applicationIcons[@"CFBundlePrimaryIcon"];
         if (applicationPrimaryIcons && [applicationPrimaryIcons isKindOfClass:[NSDictionary class]]) {
             NSArray* iconFiles = nil;
@@ -606,7 +619,7 @@
             iconPath = nil;
         }
     }
-
+    
     if (![fileManager fileExistsAtPath:iconPath])
     {
         iconPath = nil;
@@ -621,7 +634,7 @@
     {
         icon = [[NSImage alloc] initWithContentsOfFile:iconPath];
     }
-
+    
     icon = [self roundCorners:[self scaleImage:icon toSize:NSMakeSize(24, 24)]];
     
     return icon;
@@ -669,7 +682,7 @@
     {
         NSString* windowOwner = [window objectForKey:(NSString *)kCGWindowOwnerName];
         NSString* windowName = [window objectForKey:(NSString *)kCGWindowName];
-
+        
         if ([windowOwner containsString:@"Simulator"] &&
             ([windowName containsString:@"iOS"] || [windowName containsString:@"watchOS"] || [windowName containsString:@"tvOS"]))
         {
@@ -682,10 +695,10 @@
             
             NSDate *date = [NSDate date];
             NSString *dateString = [dateFormatter stringFromDate:date];
-
+            
             NSString* screenshotPath =
             [NSString stringWithFormat:@"%@/Desktop/Screen Shot at %@.png", [self homeDirectoryPath], dateString];
-
+            
             CGRect bounds;
             CGRectMakeWithDictionaryRepresentation((CFDictionaryRef)[window objectForKey:(NSString*)kCGWindowBounds], &bounds);
             
@@ -744,7 +757,7 @@
 - (void) openInTerminal:(id)sender
 {
     NSString* path = (NSString*)[sender representedObject];
-
+    
     [[NSWorkspace sharedWorkspace] openFile:path withApplication:@"Terminal"];
 }
 
@@ -752,7 +765,7 @@
 - (void) openIniTerm:(id)sender
 {
     NSString* path = (NSString*)[sender representedObject];
-
+    
     [[NSWorkspace sharedWorkspace] openFile:path withApplication:@"iTerm"];
 }
 
@@ -760,7 +773,7 @@
 - (void) openInCommanderOne:(id)sender
 {
     NSString* path = (NSString*)[sender representedObject];
-
+    
     [CommanderOne openInCommanderOne:path];
 }
 
